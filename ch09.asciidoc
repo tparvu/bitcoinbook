@@ -43,7 +43,7 @@ One way to think about the blockchain is like layers in a geological formation, 
 | 4 bytes | Version | A version number to track software/protocol upgrades
 | 32 bytes | Previous Block Hash | A reference to the hash of the previous (parent) block in the chain
 | 32 bytes | Merkle Root | A hash of the root of the merkle tree of this block's transactions
-| 4 bytes | Timestamp | The approximate creation time of this block (seconds from Unix Epoch)
+| 4 bytes | Timestamp | The approximate creation time of this block (in seconds elapsed since Unix Epoch)
 | 4 bytes | Difficulty Target | The Proof-of-Work algorithm difficulty target for this block
 | 4 bytes | Nonce | A counter used for the Proof-of-Work algorithm
 |=======
@@ -53,11 +53,13 @@ The nonce, difficulty target, and timestamp are used in the mining process and w
 [[block_hash]]
 === Block Identifiers: Block Header Hash and Block Height
 
-((("blockchain (the)", "block identifiers")))((("blocks", "block height")))((("blocks", "block hash")))The primary identifier of a block is its cryptographic hash, a digital fingerprint, made by hashing the block header twice through the SHA256 algorithm. The resulting 32-byte hash is called the _block hash_ but is more accurately the _block header hash_, pass:[<span role="keep-together">because only the block header is used to compute it. For example,</span>] +000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f+ is the block hash of the first bitcoin block ever created. The block hash identifies a block uniquely and unambiguously and can be independently derived by any node by simply hashing the block header.
+((("blockchain (the)", "block identifiers")))((("blocks", "block height")))((("blocks", "block hash")))The primary identifier of a block is its cryptographic hash, a digital fingerprint, made by hashing the block header twice through the SHA256 algorithm. The resulting 32-byte hash is called the _block hash_ but is more accurately the _block header hash_, pass:[<span role="keep-together">because only the block header is used to compute it. For example,</span>] +000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f+ is the block hash of the first bitcoin block ever created. The block hash identifies a block uniquely and unambiguously and can be independently derived by any node by simply double hashing the block header with the SHA256 algorithm.
 
 Note that the block hash is not actually included inside the block's data structure, neither when the block is transmitted on the network, nor when it is stored on a node's persistence storage as part of the blockchain. Instead, the block's hash is computed by each node as the block is received from the network. The block hash might be stored in a separate database table as part of the block's metadata, to facilitate indexing and faster retrieval of blocks from disk.
 
-A second way to identify a block is by its position in the blockchain, called the pass:[<span role="keep-together"><em>block height</em>. The first block ever created is at block height 0 (zero) and is the</span>] pass:[<span role="keep-together">same block that was previously referenced by the following block hash</span>] +000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f+. A block can thus be identified in two ways: by referencing the block hash or by referencing the block height. Each subsequent block added "on top" of that first block is one position "higher" in the blockchain, like boxes stacked one on top of the other. The block height on January 1, 2017 was approximately 446,000, meaning there were 446,000 blocks stacked on top of the first block created in January 2009.
+A second way to identify a block is by its position in the blockchain, called the pass:[<span role="keep-together"><em>block height</em>. The first block ever created is at block height 0 (zero) and is the</span>] pass:[<span role="keep-together">same block that was previously referenced by the following block hash</span>] +000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f+. A block can thus be identified in two ways: by referencing the block hash or by referencing the block height. Each subsequent block added "on top" of that first block is one position "higher" in the blockchain, like boxes stacked one on top of the other.
+
+In addition, the term _current block height_ indicates the size of the blockchain in blocks at any given time. For example, the current block height on March 1, 2021 was approximately 672,722, meaning there were 672,722 blocks stacked on top of the first block created in January 2009.
 
 Unlike the block hash, the block height is not a unique identifier. Although a single block will always have a specific and invariant block height, the reverse is not true—the block height does not always identify a single block. Two or more blocks might have the same block height, competing for the same position in the blockchain. This scenario is discussed in detail in the section <<forks>>. The block height is also not a part of the block's data structure; it is not stored within the block. Each node dynamically identifies a block's position (height) in the blockchain when it is received from the bitcoin network. The block height might also be stored as metadata in an indexed database table for faster retrieval.
 
@@ -226,9 +228,9 @@ include::code/merkle.cpp[]
 ====
 [source,bash]
 ----
-$ # Compile the merkle.cpp code
+# Compile the merkle.cpp code
 $ g++ -o merkle merkle.cpp $(pkg-config --cflags --libs libbitcoin)
-$ # Run the merkle executable
+# Run the merkle executable
 $ ./merkle
 Current merkle hash list:
   32650049a0418e4380db0af81788635d8b65424d397170b8499cdc28c4d27006
@@ -259,7 +261,7 @@ As you can see from the table, while the block size increases rapidly, from 4 KB
 
 === Merkle Trees and Simplified Payment Verification (SPV)
 
-((("simple-payment-verification (SPV)")))((("bitcoin nodes", "SPV nodes")))Merkle trees are used extensively by SPV nodes. SPV nodes don't have all transactions and do not download full blocks, just block headers. In order to verify that a transaction is included in a block, without having to download all the transactions in the block, they use an authentication path, or merkle path.
+((("simplified-payment-verification (SPV)")))((("bitcoin nodes", "SPV nodes")))Merkle trees are used extensively by SPV nodes. SPV nodes don't have all transactions and do not download full blocks, just block headers. In order to verify that a transaction is included in a block, without having to download all the transactions in the block, they use an authentication path, or merkle path.
 
 Consider, for example, an SPV node that is interested in incoming payments to an address contained in its wallet. The SPV node will establish a bloom filter (see <<bloom_filters>>) on its connections to peers to limit the transactions received to only those containing addresses of interest. When a peer sees a transaction that matches the bloom filter, it will send that block using a +merkleblock+ message. The +merkleblock+ message contains the block header as well as a merkle path that links the transaction of interest to the merkle root in the block. The SPV node can use this merkle path to connect the transaction to the block and verify that the transaction is included in the block. The SPV node also uses the block header to link the block to the rest of the blockchain. The combination of these two links, between the transaction and block, and between the block and blockchain, proves that the transaction is recorded in the blockchain. All in all, the SPV node will have received less than a kilobyte of data for the block header and merkle path, an amount of data that is more than a thousand times less than a full block (about 1 megabyte currently).((("", startref="BCTmerkle09")))((("", startref="merkle09")))
 
@@ -270,7 +272,7 @@ Consider, for example, an SPV node that is interested in incoming payments to an
 
 ==== Testnet&#x2014;Bitcoin's Testing Playground
 
-Testnet is the name of the test blockchain, network, and currency that is used for testing purposes. The testnet is a fully featured live P2P network, with wallets, test bitcoins (testnet coins), mining, and all the other features of mainnet.  There are really only two differences: testnet coins are meant to be worthless and mining difficulty should be low enough that anyone can mine testnet coins relatively easily (keeping them worthless).
+Testnet is the name of the test blockchain, network, and currency that is used for testing purposes. The testnet is a fully featured live P2P network, with wallets, test bitcoin (testnet coins), mining, and all the other features of mainnet.  There are really only two differences: testnet coins are meant to be worthless and mining difficulty should be low enough that anyone can mine testnet coins relatively easily (keeping them worthless).
 
 Any software development that is intended for production use on bitcoin's mainnet should first be tested on testnet with test coins. This protects both the developers from monetary losses due to bugs and the network from unintended behavior due to bugs.
 

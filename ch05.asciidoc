@@ -97,7 +97,7 @@ These standards may change or may become obsolete by future developments, but fo
 
 The standards have been adopted by a broad range of software and hardware bitcoin wallets, making all these wallets interoperable. A user can export a mnemonic generated on one of these wallets and import it in another wallet, recovering all transactions, keys, and addresses.
 
-((("hardware wallets")))((("hardware wallets", see="also wallets")))Some example of software wallets supporting these standards include (listed alphabetically) Breadwallet, Copay, Multibit HD, and Mycelium. Examples of hardware wallets supporting these standards include (listed alphabetically) Keepkey, Ledger, and Trezor.
+((("hardware wallets")))((("hardware wallets", see="also wallets")))Some example of software wallets supporting these standards include (listed alphabetically) Breadwallet, Copay, Multibit HD, and Mycelium. Examples of hardware wallets supporting these standards include (listed alphabetically) KeepKey, Ledger, and Trezor.
 
 The following sections examine each of these technologies in detail.
 
@@ -222,7 +222,7 @@ image::images/mbc2_0507.png["From mnemonic to seed"]
 The key-stretching function, with its 2048 rounds of hashing, is a very effective protection against brute-force attacks against the mnemonic or the passphrase. It makes it extremely costly (in computation) to try more than a few thousand passphrase and mnemonic combinations, while the number of possible derived seeds is vast (2^512^).
 ====
 
-Tables pass:[<a data-type="xref" href="#mnemonic_128_no_pass" data-xrefstyle="select: labelnumber">#mnemonic_128_no_pass</a>], pass:[<a data-type="xref" href="#mnemonic_128_w_pass" data-xrefstyle="select: labelnumber">#mnemonic_128_w_pass</a>], and pass:[<a data-type="xref" href="#mnemonic_256_no_pass" data-xrefstyle="select: labelnumber">#mnemonic_256_no_pass</a>] show some examples of mnemonic codes and the seeds they produce (without any passphrase).
+Tables pass:[<a data-type="xref" href="#mnemonic_128_no_pass" data-xrefstyle="select: labelnumber">#mnemonic_128_no_pass</a>], pass:[<a data-type="xref" href="#mnemonic_128_w_pass" data-xrefstyle="select: labelnumber">#mnemonic_128_w_pass</a>], and pass:[<a data-type="xref" href="#mnemonic_256_no_pass" data-xrefstyle="select: labelnumber">#mnemonic_256_no_pass</a>] show some examples of mnemonic codes and the seeds they produce (either with or without a passphrase).
 
 [[mnemonic_128_no_pass]]
 .128-bit entropy mnemonic code, no passphrase, resulting seed
@@ -325,7 +325,7 @@ The chain code (c) is used to introduce entropy in the function that creates chi
 
 The child key derivation functions are based on a one-way hash function that combines:
 
-* A parent private or public key (ECDSA uncompressed key)
+* A parent private or public key (ECDSA compressed key)
 * A seed called a chain code (256 bits)
 * An index number (32 bits)
 
@@ -390,7 +390,7 @@ An extended public key can be used, therefore, to derive all of the _public_ key
 
 This shortcut can be used to create very secure public key&#x2013;only deployments where a server or application has a copy of an extended public key and no private keys whatsoever. That kind of deployment can produce an infinite number of public keys and bitcoin addresses, but cannot spend any of the money sent to those addresses. Meanwhile, on another, more secure server, the extended private key can derive all the corresponding private keys to sign transactions and spend the money.
 
-One common application of this solution is to install an extended public key on a web server that serves an ecommerce application. The web server can use the public key derivation function to create a new bitcoin address for every transaction (e.g., for a customer shopping cart). The web server will not have any private keys that would be vulnerable to theft. Without HD wallets, the only way to do this is to generate thousands of bitcoin addresses on a separate secure server and then preload them on the ecommerce server. That approach is cumbersome and requires constant maintenance to ensure that the ecommerce server doesn't "run out" of keys.
+One common application of this solution is to install an extended public key on a web server that serves an ecommerce application. The web server can use the public key derivation function to create a new bitcoin address for every transaction (e.g., for a customer shopping cart). The web server will not have any private keys that would be vulnerable to theft. Without HD wallets, the only way to do this is to generate thousands of bitcoin addresses on a separate secure server and then preload them on the ecommerce server. That approach is cumbersome and requires constant maintenance to ensure that the ecommerce server doesn't "run out" of addresses.
 
 ((("cold storage")))((("storage", "cold storage")))((("hardware wallets")))Another common application of this solution is for cold-storage or hardware wallets. In that scenario, the extended private key can be stored on a paper wallet or hardware device (such as a Trezor hardware wallet), while the extended public key can be kept online. The user can create "receive" addresses at will, while the private keys are safely stored offline. To spend the funds, the user can use the extended private key on an offline signing bitcoin client or sign transactions on the hardware wallet device (e.g., Trezor). <<CKDpub>> illustrates the mechanism for extending a parent public key to derive child public keys.
 
@@ -433,7 +433,7 @@ image::images/mbc2_0513.png["ChildHardPrivateDerivation"]
 [role="pagebreak-before"]
 When the hardened private derivation function is used, the resulting child private key and chain code are completely different from what would result from the normal derivation function. The resulting "branch" of keys can be used to produce extended public keys that are not vulnerable, because the chain code they contain cannot be exploited to reveal any private keys. Hardened derivation is therefore used to create a "gap" in the tree above the level where extended public keys are used.
 
-In simple terms, if you want to use the convenience of an xpub to derive branches of public keys, without exposing yourself to the risk of a leaked chain code, you should derive it from a hardened parent, rather than a normal parent. As a best practice, the level-1 children of the master keys are always derived through the hardened derivation, to prevent compromise of the master keys.
+In simple terms, if you want to use the convenience of an xpub to derive branches of public keys, without exposing yourself to the risk of a leaked chain code, you should derive it from a hardened parent key, rather than a normal (non-hardened) parent key. As a best practice, the level-1 children of the master keys are always derived through the hardened derivation, to prevent compromise of the master keys.
 
 ===== Index numbers for normal and hardened derivation
 
@@ -445,7 +445,7 @@ To make the index number easier to read and display, the index number for harden
 
 ((("hierarchical deterministic (HD) wallets")))Keys in an HD wallet are identified using a "path" naming convention, with each level of the tree separated by a slash (/) character (see <<table_4-8>>). Private keys derived from the master private key start with "m." Public keys derived from the master public key start with "M." Therefore, the first child private key of the master private key is m/0. The first child public key is M/0. The second grandchild of the first child is m/0/1, and so on.
 
-The "ancestry" of a key is read from right to left, until you reach the master key from which it was derived. For example, identifier m/x/y/z describes the key that is the z-th child of key m/x/y, which is the y-th child of key m/x, which is the x-th child of m.
+The "ancestry" of a key is read from right to left, until you reach the master key from which it was derived. For example, identifier m/x/y/z describes the private key that is the z-th child of the parent private key m/x/y, which is the y-th child of the parent private key m/x, which is the x-th child of the parent master private key m.
 
 [[table_4-8]]
 .HD wallet path examples
@@ -453,10 +453,10 @@ The "ancestry" of a key is read from right to left, until you reach the master k
 |=======
 |HD path | Key described
 | m/0 | The first (0) child private key from the master private key (m)
-| m/0/0 | The first grandchild private key from the first child (m/0)
-| m/0'/0 | The first normal grandchild from the first _hardened_ child (m/0')
-| m/1/0 | The first grandchild private key from the second child (m/1)
-| M/23/17/0/0 | The first great-great-grandchild public key from the first great-grandchild from the 18th grandchild from the 24th child
+| m/0/0 | The first (0) child private key from the first child (m/0)
+| m/0'/0 | The first (0) normal child from the first _hardened_ child (m/0')
+| m/1/0 | The first (0) child private key from the second child (m/1)
+| M/23/17/0/0 | The first (0) child public key from the first child (M/23/17/0) from the 18th child (M/23/17) from the 24th child (M/23)
 |=======
 
 ===== Navigating the HD wallet tree structure
